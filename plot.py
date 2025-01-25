@@ -58,31 +58,43 @@ def create_polymer_chain(n_units, bond_angle, torsion_angle, bond_length, monome
     num_atoms = n_units
     return num_atoms, coordinates, bonds
 
-def visualize_polymer(xyz_content, bonds):
+def visualize_polymer(coordinates, bonds):
     """
     Visualize the polymer using py3Dmol.
     """
     view = py3Dmol.view(width=800, height=400)
-    view.addModel(xyz_content, "xyz")
-    
+
+    # Add atoms
+    for i, atom in enumerate(coordinates):
+        view.addSphere({
+            "center": {
+                "x": float(atom[1]),
+                "y": float(atom[2]),
+                "z": float(atom[3])
+            },
+            "radius": 0.3,
+            "color": "blue" if atom[0] == "N" else "gray"
+        })
+
     # Add bonds
     for bond in bonds:
+        start = coordinates[bond[0]]
+        end = coordinates[bond[1]]
         view.addCylinder({
             "start": {
-                "x": float(xyz_content[bond[0] + 2].split()[1]),
-                "y": float(xyz_content[bond[0] + 2].split()[2]),
-                "z": float(xyz_content[bond[0] + 2].split()[3])
+                "x": float(start[1]),
+                "y": float(start[2]),
+                "z": float(start[3])
             },
             "end": {
-                "x": float(xyz_content[bond[1] + 2].split()[1]),
-                "y": float(xyz_content[bond[1] + 2].split()[2]),
-                "z": float(xyz_content[bond[1] + 2].split()[3])
+                "x": float(end[1]),
+                "y": float(end[2]),
+                "z": float(end[3])
             },
             "radius": 0.1,
             "color": "gray"
         })
-    
-    view.setStyle({"sphere": {"radius": 0.5}})
+
     view.zoomTo()
     return view
 
@@ -106,7 +118,7 @@ if st.button("Generate Polymer"):
 
     # Visualize polymer
     st.subheader("Polymer Visualization")
-    view = visualize_polymer(xyz_content.splitlines(), bonds)
+    view = visualize_polymer(coordinates, bonds)
     st.components.v1.html(view._make_html(), height=500)
 
     # Download option
