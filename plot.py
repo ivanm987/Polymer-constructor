@@ -1,5 +1,6 @@
 import numpy as np
 import streamlit as st
+import py3Dmol
 from io import StringIO
 
 def write_xyz_string(num_atoms, coordinates):
@@ -46,6 +47,16 @@ def create_polymer_chain(n_units, bond_angle, rigidity):
     num_atoms = n_units
     return num_atoms, coordinates
 
+def visualize_polymer(xyz_content):
+    """
+    Visualize the polymer using py3Dmol.
+    """
+    view = py3Dmol.view(width=800, height=400)
+    view.addModel(xyz_content, "xyz")
+    view.setStyle({"sphere": {"radius": 0.5}})
+    view.zoomTo()
+    return view
+
 # Streamlit interface
 st.title("Polymer Constructor")
 
@@ -62,6 +73,12 @@ if st.button("Generate Polymer"):
     # Display XYZ content
     st.text_area("Generated Polymer (XYZ Format)", xyz_content, height=300)
 
+    # Visualize polymer
+    st.subheader("Polymer Visualization")
+    view = visualize_polymer(xyz_content)
+    view.show()
+    st.components.v1.html(view._make_html(), height=500)
+
     # Download option
     st.download_button(
         label="Download Polymer XYZ File",
@@ -69,5 +86,4 @@ if st.button("Generate Polymer"):
         file_name="polymer.xyz",
         mime="text/plain"
     )
-
 
