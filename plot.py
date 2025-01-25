@@ -76,7 +76,6 @@ if st.button("Generate Polymer"):
     # Visualize polymer
     st.subheader("Polymer Visualization")
     view = visualize_polymer(xyz_content)
-    view.show()
     st.components.v1.html(view._make_html(), height=500)
 
     # Download option
