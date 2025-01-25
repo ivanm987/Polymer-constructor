@@ -14,45 +14,74 @@ def write_xyz_string(num_atoms, coordinates):
         output.write(f"{atom[0]} {atom[1]} {atom[2]} {atom[3]}\n")
     return output.getvalue()
 
-def create_polymer_chain(n_units, bond_angle, rigidity):
+def create_polymer_chain(n_units, bond_angle, torsion_angle, bond_length, monomer_type):
     """
     Creates a polymer chain by generating spheres connected at specified angles.
 
     Parameters:
     - n_units: int, number of monomer units in the polymer.
     - bond_angle: float, angle in degrees between consecutive bonds.
-    - rigidity: float, controls deviation from the bond angle (0 = rigid).
+    - torsion_angle: float, torsion angle in degrees for 3D rotation.
+    - bond_length: float, distance between monomers.
+    - monomer_type: str, type of monomer (e.g., C, O, N).
 
     Returns:
     - num_atoms: int, total number of atoms in the polymer.
     - coordinates: list, atomic coordinates in XYZ format.
+    - bonds: list, pairs of atom indices representing bonds.
     """
     coordinates = []
+    bonds = []
     x, y, z = 0.0, 0.0, 0.0
     angle = 0.0
+    torsion = 0.0
 
     for i in range(n_units):
         # Add the current monomer as a sphere (single atom for simplicity)
-        coordinates.append(["C", f"{x:.6f}", f"{y:.6f}", f"{z:.6f}"])
+        coordinates.append([monomer_type, f"{x:.6f}", f"{y:.6f}", f"{z:.6f}"])
+
+        # Create bond to previous monomer
+        if i > 0:
+            bonds.append((i - 1, i))
 
         # Update position for the next monomer
         angle_rad = np.radians(angle)
-        x += np.cos(angle_rad)
-        y += np.sin(angle_rad)
-        z += 1.0  # Linear progression along z-axis
+        torsion_rad = np.radians(torsion)
+        x += bond_length * np.cos(angle_rad) * np.cos(torsion_rad)
+        y += bond_length * np.sin(angle_rad) * np.cos(torsion_rad)
+        z += bond_length * np.sin(torsion_rad)
 
-        # Introduce variability based on rigidity
-        angle += bond_angle + np.random.uniform(-rigidity, rigidity)
+        # Update angles for the next iteration
+        angle += bond_angle
+        torsion += torsion_angle
 
     num_atoms = n_units
-    return num_atoms, coordinates
+    return num_atoms, coordinates, bonds
 
-def visualize_polymer(xyz_content):
+def visualize_polymer(xyz_content, bonds):
     """
     Visualize the polymer using py3Dmol.
     """
     view = py3Dmol.view(width=800, height=400)
     view.addModel(xyz_content, "xyz")
+    
+    # Add bonds
+    for bond in bonds:
+        view.addCylinder({
+            "start": {
+                "x": float(xyz_content[bond[0] + 2].split()[1]),
+                "y": float(xyz_content[bond[0] + 2].split()[2]),
+                "z": float(xyz_content[bond[0] + 2].split()[3])
+            },
+            "end": {
+                "x": float(xyz_content[bond[1] + 2].split()[1]),
+                "y": float(xyz_content[bond[1] + 2].split()[2]),
+                "z": float(xyz_content[bond[1] + 2].split()[3])
+            },
+            "radius": 0.1,
+            "color": "gray"
+        })
+    
     view.setStyle({"sphere": {"radius": 0.5}})
     view.zoomTo()
     return view
@@ -63,11 +92,13 @@ st.title("Polymer Constructor")
 # Input parameters
 n_units = st.number_input("Number of monomer units", min_value=1, step=1, value=5)
 bond_angle = st.slider("Bond angle (degrees)", min_value=0, max_value=180, value=120, step=1)
-rigidity = st.slider("Rigidity (0 = rigid, higher = flexible)", min_value=0.0, max_value=10.0, value=0.0, step=0.1)
+torsion_angle = st.slider("Torsion angle (degrees)", min_value=-180, max_value=180, value=0, step=1)
+bond_length = st.slider("Bond length (angstroms)", min_value=0.5, max_value=5.0, value=1.5, step=0.1)
+monomer_type = st.selectbox("Monomer type", ["C", "O", "N", "H"])
 
 # Generate polymer chain
 if st.button("Generate Polymer"):
-    num_atoms, coordinates = create_polymer_chain(n_units, bond_angle, rigidity)
+    num_atoms, coordinates, bonds = create_polymer_chain(n_units, bond_angle, torsion_angle, bond_length, monomer_type)
     xyz_content = write_xyz_string(num_atoms, coordinates)
 
     # Display XYZ content
@@ -75,7 +106,7 @@ if st.button("Generate Polymer"):
 
     # Visualize polymer
     st.subheader("Polymer Visualization")
-    view = visualize_polymer(xyz_content)
+    view = visualize_polymer(xyz_content.splitlines(), bonds)
     st.components.v1.html(view._make_html(), height=500)
 
     # Download option
@@ -85,4 +116,5 @@ if st.button("Generate Polymer"):
         file_name="polymer.xyz",
         mime="text/plain"
     )
+
 
